@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    # ⚠️ Este nome "build" DEVE ser igual ao "contexts" da proteção de branch
+    name: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Build + Testes Unitários
+        run: mvn clean verify -B
+        # clean    → limpa artefatos anteriores
+        # verify   → compila + roda testes unitários + empacota JAR
+        # -B       → batch mode (sem output interativo)
