@@ -1,6 +1,6 @@
 package br.com.banco.processamento_encargos;
 
-import br.com.banco.processamento_encargos.domain.exemplo;
+import br.com.banco.processamento_encargos.domain.model.Exemplo;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -18,7 +18,7 @@ class ProcessamentoEncargosApplicationTests {
 
 	@Test
 	void exemploMainRuns() {
-		exemplo.main(new String[]{});
+		Exemplo.main(new String[]{});
 	}
 
 }
