@@ -13,7 +13,7 @@ class ResultadoProcessamentoTest {
     private Lancamento criarLancamento() {
         return new Lancamento(
                 "abc-123", "001234567-8", TipoLancamento.DEBITO,
-                new BigDecimal("250.00"), LocalDate.of(2026, 3, 10), "Taxa mensal");
+                new BigDecimal("250.00"), LocalDate.of(2026, 3, 10), "Taxa mensal", "Debitar");
     }
 
     @Test

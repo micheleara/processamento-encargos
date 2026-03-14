@@ -31,7 +31,8 @@ class ValidacaoLancamentoServiceTest {
                 tipo,
                 new BigDecimal("150.75"),
                 LocalDate.of(2026, 3, 10),
-                "Encargos"
+                "Encargos",
+                "Debitar"
         );
     }
 

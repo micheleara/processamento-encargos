@@ -39,7 +39,7 @@ class ProcessarLancamentoServiceTest {
     private Lancamento criarLancamento(TipoLancamento tipo) {
         return new Lancamento(
                 "abc-123", "001234567-8", tipo,
-                new BigDecimal("150.75"), LocalDate.of(2026, 3, 10), "Encargos");
+                new BigDecimal("150.75"), LocalDate.of(2026, 3, 10), "Encargos", "Debitar");
     }
 
     private ContaInfo criarConta(StatusConta status) {

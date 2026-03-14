@@ -12,17 +12,18 @@ import java.time.format.DateTimeFormatter;
 
 public class LancamentoCsvFieldSetMapper implements FieldSetMapper<Lancamento> {
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     @Override
     public Lancamento mapFieldSet(FieldSet fieldSet) throws BindException {
         return new Lancamento(
                 fieldSet.readString("idLancamento"),
                 fieldSet.readString("numeroConta"),
-                TipoLancamento.valueOf(fieldSet.readString("tipoLancamento")),
+                TipoLancamento.valueOf(fieldSet.readString("tipoLancamento").toUpperCase()),
                 new BigDecimal(fieldSet.readString("valor")),
                 LocalDate.parse(fieldSet.readString("dataLancamento"), DATE_FORMATTER),
-                fieldSet.readString("descricao")
+                fieldSet.readString("descricao"),
+                fieldSet.readString("evento")
         );
     }
 }

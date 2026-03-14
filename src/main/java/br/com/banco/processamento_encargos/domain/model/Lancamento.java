@@ -9,7 +9,8 @@ public record Lancamento(
         TipoLancamento tipoLancamento,
         BigDecimal valor,
         LocalDate dataLancamento,
-        String descricao
+        String descricao,
+        String evento
 ) {
 }
 
