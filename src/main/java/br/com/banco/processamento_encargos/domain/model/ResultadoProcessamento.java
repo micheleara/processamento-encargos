@@ -11,6 +11,7 @@ public record ResultadoProcessamento(
         BigDecimal valor,
         LocalDate dataLancamento,
         String descricao,
+        String evento,
         StatusProcessamento status,
         String motivoRejeicao,
         LocalDateTime dataProcessamento
@@ -24,6 +25,7 @@ public record ResultadoProcessamento(
                 lancamento.valor(),
                 lancamento.dataLancamento(),
                 lancamento.descricao(),
+                lancamento.evento(),
                 StatusProcessamento.PROCESSADO,
                 null,
                 LocalDateTime.now()
@@ -38,6 +40,7 @@ public record ResultadoProcessamento(
                 lancamento.valor(),
                 lancamento.dataLancamento(),
                 lancamento.descricao(),
+                lancamento.evento(),
                 StatusProcessamento.REJEITADO,
                 motivoRejeicao,
                 LocalDateTime.now()

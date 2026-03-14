@@ -43,7 +43,6 @@ encargos:
     chunk-size: 100
     partitions: 2
     s3-key-prefix: lancamentos/
-    local-temp-dir: ${java.io.tmpdir}/encargos-test
 
 management:
   endpoints:

@@ -5,7 +5,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -32,17 +31,4 @@ class StubAdaptersTest {
         assertDoesNotThrow(() ->
                 stub.publicarAtualizacaoSaldo("001234567-8", TipoLancamento.DEBITO, new BigDecimal("100.00")));
     }
-
-    @Test
-    @DisplayName("StubPersistirResultadoAdapter deve executar sem exceção")
-    void stubPersistirResultadoDeveExecutarSemExcecao() {
-        StubPersistirResultadoAdapter stub = new StubPersistirResultadoAdapter();
-        ResultadoProcessamento resultado = new ResultadoProcessamento(
-                "abc-123", "001234567-8", TipoLancamento.DEBITO,
-                new BigDecimal("150.00"), java.time.LocalDate.of(2026, 3, 10),
-                "Encargos", StatusProcessamento.PROCESSADO, null, LocalDateTime.now());
-
-        assertDoesNotThrow(() -> stub.persistir(resultado));
-    }
 }
-

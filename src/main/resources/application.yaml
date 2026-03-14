@@ -49,7 +49,7 @@ encargos:
     chunk-size: ${BATCH_CHUNK_SIZE:1000}
     partitions: ${BATCH_PARTITIONS:10}
     s3-key-prefix: ${S3_KEY_PREFIX:}
-    local-temp-dir: ${LOCAL_TEMP_DIR:/tmp/encargos}
+    # local-temp-dir removido: leitura agora é feita por stream direto do S3
 
 management:
   endpoints:

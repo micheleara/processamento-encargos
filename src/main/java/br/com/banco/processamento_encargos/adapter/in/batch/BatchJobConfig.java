@@ -7,30 +7,28 @@ import br.com.banco.processamento_encargos.domain.port.in.ProcessarLancamentoPor
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
-import org.springframework.batch.core.partition.support.Partitioner;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
+import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.item.support.SynchronizedItemStreamReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
 
 @Slf4j
 @Configuration
@@ -52,83 +50,61 @@ public class BatchJobConfig {
     @Bean
     public Job processarEncargosJob() {
         return new JobBuilder("processarEncargosJob", jobRepository)
-                .start(downloadArquivoS3Step())
-                .next(partitionedProcessarStep())
-                .listener(cleanupJobListener())
+                .start(processarLancamentosStep())
                 .build();
     }
 
-    @Bean
-    public Step downloadArquivoS3Step() {
-        return new StepBuilder("downloadArquivoS3Step", jobRepository)
-                .tasklet(s3DownloadTasklet(), transactionManager)
-                .build();
-    }
-
-    @Bean
-    public S3DownloadTasklet s3DownloadTasklet() {
-        return new S3DownloadTasklet(s3FileDownloadAdapter);
-    }
-
-    @Bean
-    public Step partitionedProcessarStep() {
-        return new StepBuilder("partitionedProcessarStep", jobRepository)
-                .partitioner("processarLancamentosStep", partitioner(null))
-                .step(processarLancamentosStep())
-                .gridSize(partitions)
-                .taskExecutor(batchTaskExecutor())
-                .build();
-    }
-
-    @Bean
-    @StepScope
-    public Partitioner partitioner(
-            @Value("#{jobExecutionContext['csvFilePath']}") String csvFilePath) {
-        if (csvFilePath == null) {
-            // Durante a criação do bean, o path ainda não está disponível
-            return gridSize -> java.util.Collections.emptyMap();
-        }
-        return new LancamentoPartitioner(Path.of(csvFilePath), partitions);
-    }
-
+    /**
+     * Step único com leitura via stream S3 e processamento multi-threaded.
+     * O reader é sincronizado (SynchronizedItemStreamReader) para thread-safety.
+     * O taskExecutor permite que múltiplos chunks sejam processados em paralelo.
+     */
     @Bean
     public Step processarLancamentosStep() {
         return new StepBuilder("processarLancamentosStep", jobRepository)
                 .<Lancamento, ResultadoProcessamento>chunk(chunkSize, transactionManager)
-                .reader(csvReader(null, null, null))
+                .reader(synchronizedCsvReader())
                 .processor(lancamentoProcessor())
                 .writer(resultadoWriter())
+                .taskExecutor(batchTaskExecutor())
                 .faultTolerant()
                 .skipLimit(10_000)
                 .skip(Exception.class)
                 .build();
     }
 
+    /**
+     * Reader sincronizado que envolve o FlatFileItemReader para uso em step multi-threaded.
+     * Garante que apenas uma thread leia do stream S3 por vez.
+     * @StepScope garante que uma nova instância (e novo stream S3) seja criada a cada execução do step.
+     */
     @Bean
     @StepScope
-    public FlatFileItemReader<Lancamento> csvReader(
-            @Value("#{stepExecutionContext['filePath']}") String filePath,
-            @Value("#{stepExecutionContext['startLine']}") Integer startLine,
-            @Value("#{stepExecutionContext['maxItems']}") Integer maxItems) {
+    public SynchronizedItemStreamReader<Lancamento> synchronizedCsvReader() {
+        SynchronizedItemStreamReader<Lancamento> synchronizedReader = new SynchronizedItemStreamReader<>();
+        synchronizedReader.setDelegate(s3StreamCsvReader());
+        return synchronizedReader;
+    }
 
-        FlatFileItemReaderBuilder<Lancamento> builder = new FlatFileItemReaderBuilder<Lancamento>()
+    /**
+     * FlatFileItemReader que lê diretamente do stream S3 via InputStreamResource.
+     * Elimina o download do arquivo para disco, evitando gargalo de I/O e consumo de espaço em /tmp.
+     * @StepScope garante que o stream S3 seja aberto apenas no momento da execução do step.
+     */
+    @Bean
+    @StepScope
+    public FlatFileItemReader<Lancamento> s3StreamCsvReader() {
+        InputStream s3Stream = s3FileDownloadAdapter.abrirStreamArquivoDoDia();
+
+        return new FlatFileItemReaderBuilder<Lancamento>()
                 .name("lancamentoCsvReader")
+                .resource(new InputStreamResource(s3Stream, "S3 CSV Stream - lancamentos.csv"))
                 .linesToSkip(1) // pular cabeçalho
                 .delimited()
-                .names("idLancamento", "numeroConta", "tipoLancamento", "valor", "dataLancamento", "descricao")
-                .fieldSetMapper(new LancamentoCsvFieldSetMapper());
-
-        if (filePath != null) {
-            builder.resource(new FileSystemResource(filePath));
-        }
-        if (startLine != null && startLine > 0) {
-            builder.currentItemCount(startLine);
-        }
-        if (maxItems != null && maxItems > 0) {
-            builder.maxItemCount((startLine != null ? startLine : 0) + maxItems);
-        }
-
-        return builder.build();
+                .names("idLancamento", "numeroConta", "tipoLancamento", "valor", "dataLancamento", "descricao", "evento")
+                .fieldSetMapper(new LancamentoCsvFieldSetMapper())
+                .saveState(false) // InputStreamResource não suporta restart — desabilitar save state
+                .build();
     }
 
     @Bean
@@ -141,13 +117,24 @@ public class BatchJobConfig {
         return new JdbcBatchItemWriterBuilder<ResultadoProcessamento>()
                 .dataSource(dataSource)
                 .sql("""
-                    INSERT INTO resultado_processamento 
-                        (id_lancamento, numero_conta, tipo_lancamento, valor, data_lancamento, descricao, status, motivo_rejeicao, data_processamento)
-                    VALUES 
-                        (:idLancamento, :numeroConta, :tipoLancamento, :valor, :dataLancamento, :descricao, :status, :motivoRejeicao, :dataProcessamento)
+                    INSERT INTO resultado_processamento
+                        (id_lancamento, numero_conta, tipo_lancamento, valor, data_lancamento, descricao, evento, status, motivo_rejeicao, data_processamento)
+                    VALUES
+                        (:idLancamento, :numeroConta, :tipoLancamento, :valor, :dataLancamento, :descricao, :evento, :status, :motivoRejeicao, :dataProcessamento)
                     ON CONFLICT (id_lancamento) DO NOTHING
                     """)
-                .beanMapped()
+                .assertUpdates(false) // ON CONFLICT DO NOTHING retorna 0 linhas em duplicatas — comportamento esperado
+                .itemSqlParameterSourceProvider(item -> new MapSqlParameterSource()
+                        .addValue("idLancamento",      item.idLancamento())
+                        .addValue("numeroConta",       item.numeroConta())
+                        .addValue("tipoLancamento",    item.tipoLancamento().name())
+                        .addValue("valor",             item.valor())
+                        .addValue("dataLancamento",    item.dataLancamento())
+                        .addValue("descricao",         item.descricao())
+                        .addValue("evento",            item.evento())
+                        .addValue("status",            item.status().name())
+                        .addValue("motivoRejeicao",    item.motivoRejeicao())
+                        .addValue("dataProcessamento", item.dataProcessamento()))
                 .build();
     }
 
@@ -157,26 +144,5 @@ public class BatchJobConfig {
         executor.setConcurrencyLimit(partitions);
         executor.setVirtualThreads(true); // Java 21 Virtual Threads
         return executor;
-    }
-
-    @Bean
-    public JobExecutionListener cleanupJobListener() {
-        return new JobExecutionListener() {
-            @Override
-            public void afterJob(JobExecution jobExecution) {
-                String csvFilePath = jobExecution.getExecutionContext().getString("csvFilePath", null);
-                if (csvFilePath != null) {
-                    try {
-                        Path path = Path.of(csvFilePath);
-                        if (Files.deleteIfExists(path)) {
-                            log.info("Arquivo temporário removido: {}", csvFilePath);
-                        }
-                    } catch (Exception e) {
-                        log.warn("Falha ao remover arquivo temporário: {}", csvFilePath, e);
-                    }
-                }
-                log.info("Job finalizado com status: {}", jobExecution.getStatus());
-            }
-        };
     }
 }
