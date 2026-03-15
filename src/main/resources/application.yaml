@@ -1,3 +1,6 @@
+server:
+  port: 8082
+
 spring:
   application:
     name: processamento-encargos
@@ -62,7 +65,6 @@ encargos:
       consulta-request: ${KAFKA_TOPIC_CONSULTA_REQUEST:encargos.conta.consulta.request}
       consulta-response: ${KAFKA_TOPIC_CONSULTA_RESPONSE:encargos.conta.consulta.response}
     consulta-timeout-seconds: ${KAFKA_CONSULTA_TIMEOUT_SECONDS:5}
-    # local-temp-dir removido: leitura agora é feita por stream direto do S3
 
 management:
   endpoints:
