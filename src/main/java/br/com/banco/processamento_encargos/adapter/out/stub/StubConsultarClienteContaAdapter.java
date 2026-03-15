@@ -4,6 +4,7 @@ import br.com.banco.processamento_encargos.domain.model.ContaInfo;
 import br.com.banco.processamento_encargos.domain.model.StatusConta;
 import br.com.banco.processamento_encargos.domain.port.out.ConsultarClienteContaPort;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 
 @Slf4j
 @Component
+@Profile("local")
 public class StubConsultarClienteContaAdapter implements ConsultarClienteContaPort {
 
     @Override

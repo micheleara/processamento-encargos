@@ -12,13 +12,19 @@ import org.springframework.test.context.TestPropertySource;
 		"spring.datasource.driver-class-name=org.h2.Driver",
 		"spring.jpa.hibernate.ddl-auto=create-drop",
 		"spring.batch.jdbc.initialize-schema=always",
-		"spring.batch.job.enabled=false"
+		"spring.batch.job.enabled=false",
+		"encargos.kafka.topics.consulta-request=encargos.conta.consulta.request",
+		"encargos.kafka.topics.consulta-response=encargos.conta.consulta.response",
+		"encargos.kafka.consulta-timeout-seconds=5",
+		"cloud.aws.s3.access-key=test",
+		"cloud.aws.s3.secret-key=test",
+		"cloud.aws.s3.region=us-east-1",
+		"cloud.aws.s3.bucket-name=test-bucket",
+		"spring.profiles.active=local"
 })
 class ProcessamentoEncargosApplicationTests {
 
 	@Test
 	void contextLoads() {
 	}
-
-
 }

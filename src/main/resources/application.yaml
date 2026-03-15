@@ -31,6 +31,14 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    listener:
+      ack-mode: manual
+    admin:
+      fail-fast: false
+      properties:
+        retries: 3
+        request.timeout.ms: 3000
+        connections.max.idle.ms: 10000
 
   flyway:
     enabled: true
@@ -49,6 +57,11 @@ encargos:
     chunk-size: ${BATCH_CHUNK_SIZE:1000}
     partitions: ${BATCH_PARTITIONS:10}
     s3-key-prefix: ${S3_KEY_PREFIX:}
+  kafka:
+    topics:
+      consulta-request: ${KAFKA_TOPIC_CONSULTA_REQUEST:encargos.conta.consulta.request}
+      consulta-response: ${KAFKA_TOPIC_CONSULTA_RESPONSE:encargos.conta.consulta.response}
+    consulta-timeout-seconds: ${KAFKA_CONSULTA_TIMEOUT_SECONDS:5}
     # local-temp-dir removido: leitura agora é feita por stream direto do S3
 
 management:
