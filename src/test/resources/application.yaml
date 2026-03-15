@@ -43,6 +43,11 @@ encargos:
     chunk-size: 100
     partitions: 2
     s3-key-prefix: lancamentos/
+  kafka:
+    topics:
+      consulta-request: encargos.conta.consulta.request
+      consulta-response: encargos.conta.consulta.response
+    consulta-timeout-seconds: 1
 
 management:
   endpoints:

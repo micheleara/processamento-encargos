@@ -24,6 +24,7 @@ class StubAdaptersTest {
     }
 
     @Test
+
     @DisplayName("StubAtualizarSaldoContaAdapter deve executar sem exceção")
     void stubAtualizarSaldoDeveExecutarSemExcecao() {
         StubAtualizarSaldoContaAdapter stub = new StubAtualizarSaldoContaAdapter();
