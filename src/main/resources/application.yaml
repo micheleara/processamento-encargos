@@ -1,9 +1,12 @@
+server:
+  port: 8083
+
 spring:
   application:
     name: processamento-encargos
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require
+    url: jdbc:postgresql://contas-db.cjemukoiu6hf.sa-east-1.rds.amazonaws.com:5432/contasdb?sslmode=require
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -64,8 +67,8 @@ encargos:
     topics:
       consulta-request: ${KAFKA_TOPIC_CONSULTA_REQUEST:encargos.conta.consulta.request}
       consulta-response: ${KAFKA_TOPIC_CONSULTA_RESPONSE:encargos.conta.consulta.response}
-      lancamento-contabil: ${KAFKA_TOPIC_LANCAMENTO_CONTABIL:encargos.lancamento-contabil}
-      confirmacao-contabil: ${KAFKA_TOPIC_CONFIRMACAO_CONTABIL:encargos.contabil-confirmacao}
+      lancamento-contabil: ${KAFKA_TOPIC_LANCAMENTO_CONTABIL:encargos.contabil.lancamento.request}
+      confirmacao-contabil: ${KAFKA_TOPIC_CONFIRMACAO_CONTABIL:encargos.contabil.lancamento.response}
       atualizar-saldo: ${KAFKA_TOPIC_ATUALIZAR_SALDO:encargos.conta.atualizar-saldo}
     consulta-timeout-seconds: ${KAFKA_CONSULTA_TIMEOUT_SECONDS:5}
     # local-temp-dir removido: leitura agora é feita por stream direto do S3

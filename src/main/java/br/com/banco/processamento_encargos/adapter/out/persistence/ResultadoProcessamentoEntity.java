@@ -11,7 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "resultado_processamento")
+@Table(name = "resultadoprocessamentodb")
 @Getter
 @Builder
 @NoArgsConstructor
