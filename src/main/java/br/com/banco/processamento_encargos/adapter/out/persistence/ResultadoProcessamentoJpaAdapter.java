@@ -17,15 +17,17 @@ public class ResultadoProcessamentoJpaAdapter implements SalvarResultadoProcessa
     public void salvar(ResultadoProcessamento resultado) {
         ResultadoProcessamentoEntity entity = ResultadoProcessamentoEntity.builder()
                 .idLancamento(resultado.idLancamento())
-                .numeroConta(resultado.numeroConta())
+                .numConta(resultado.numeroConta())
                 .tipoLancamento(resultado.tipoLancamento().name())
                 .valor(resultado.valor())
                 .dataLancamento(resultado.dataLancamento())
                 .descricao(resultado.descricao())
                 .evento(resultado.evento())
-                .status(resultado.status().name())
-                .motivoRejeicao(resultado.motivoRejeicao())
-                .dataProcessamento(resultado.dataProcessamento())
+                .statusProc(resultado.status().name())
+                .motivoRecusa(resultado.motivoRejeicao())
+                .saldoAnterior(resultado.saldoAnterior())
+                .saldoPosterior(resultado.saldoPosterior())
+                .processadoEm(resultado.dataProcessamento())
                 .build();
 
         repository.save(entity);

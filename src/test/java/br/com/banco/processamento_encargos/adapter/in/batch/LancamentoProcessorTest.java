@@ -41,7 +41,8 @@ class LancamentoProcessorTest {
     @DisplayName("Deve delegar processamento para o port e retornar resultado PROCESSADO")
     void deveDelegarProcessamentoERetornarProcessado() {
         Lancamento lancamento = criarLancamento();
-        ResultadoProcessamento esperado = ResultadoProcessamento.processado(lancamento);
+        ResultadoProcessamento esperado = ResultadoProcessamento.processado(
+                lancamento, new BigDecimal("10000.00"), new BigDecimal("9849.25"));
         when(processarLancamentoPort.processar(lancamento)).thenReturn(esperado);
 
         ResultadoProcessamento resultado = processor.process(lancamento);

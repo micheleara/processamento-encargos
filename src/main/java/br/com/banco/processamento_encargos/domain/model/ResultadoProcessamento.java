@@ -14,10 +14,12 @@ public record ResultadoProcessamento(
         String evento,
         StatusProcessamento status,
         String motivoRejeicao,
+        BigDecimal saldoAnterior,
+        BigDecimal saldoPosterior,
         LocalDateTime dataProcessamento
 ) {
 
-    public static ResultadoProcessamento processado(Lancamento lancamento) {
+    public static ResultadoProcessamento processado(Lancamento lancamento, BigDecimal saldoAnterior, BigDecimal saldoPosterior) {
         return new ResultadoProcessamento(
                 lancamento.idLancamento(),
                 lancamento.numeroConta(),
@@ -28,6 +30,8 @@ public record ResultadoProcessamento(
                 lancamento.evento(),
                 StatusProcessamento.PROCESSADO,
                 null,
+                saldoAnterior,
+                saldoPosterior,
                 LocalDateTime.now()
         );
     }
@@ -43,8 +47,9 @@ public record ResultadoProcessamento(
                 lancamento.evento(),
                 StatusProcessamento.REJEITADO,
                 motivoRejeicao,
+                null,
+                null,
                 LocalDateTime.now()
         );
     }
 }
-

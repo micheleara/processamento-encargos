@@ -25,8 +25,8 @@ public class ResultadoProcessamentoEntity {
     @Column(name = "id_lancamento", nullable = false, unique = true, length = 50)
     private String idLancamento;
 
-    @Column(name = "numero_conta", nullable = false, length = 20)
-    private String numeroConta;
+    @Column(name = "num_conta", nullable = false, length = 20)
+    private String numConta;
 
     @Column(name = "tipo_lancamento", nullable = false, length = 10)
     private String tipoLancamento;
@@ -37,18 +37,24 @@ public class ResultadoProcessamentoEntity {
     @Column(name = "data_lancamento", nullable = false)
     private LocalDate dataLancamento;
 
-    @Column(name = "descricao", length = 255)
+    @Column(name = "descricao", length = 200)
     private String descricao;
 
-    @Column(name = "evento", length = 50)
+    @Column(name = "evento", length = 20)
     private String evento;
 
-    @Column(name = "status", nullable = false, length = 20)
-    private String status;
+    @Column(name = "status_proc", nullable = false, length = 20)
+    private String statusProc;
 
-    @Column(name = "motivo_rejeicao", length = 100)
-    private String motivoRejeicao;
+    @Column(name = "motivo_recusa", length = 200)
+    private String motivoRecusa;
 
-    @Column(name = "data_processamento", nullable = false)
-    private LocalDateTime dataProcessamento;
+    @Column(name = "saldo_anterior", precision = 15, scale = 2)
+    private BigDecimal saldoAnterior;
+
+    @Column(name = "saldo_posterior", precision = 15, scale = 2)
+    private BigDecimal saldoPosterior;
+
+    @Column(name = "processado_em", nullable = false)
+    private LocalDateTime processadoEm;
 }

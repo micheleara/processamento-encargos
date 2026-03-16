@@ -3,6 +3,7 @@ package br.com.banco.processamento_encargos.application;
 import br.com.banco.processamento_encargos.domain.model.*;
 import br.com.banco.processamento_encargos.domain.port.out.AtualizarSaldoContaPort;
 import br.com.banco.processamento_encargos.domain.port.out.ConsultarClienteContaPort;
+import br.com.banco.processamento_encargos.domain.port.out.SalvarResultadoProcessamentoPort;
 import br.com.banco.processamento_encargos.domain.service.ValidacaoLancamentoService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,13 +28,16 @@ class ProcessarLancamentoServiceTest {
     @Mock
     private AtualizarSaldoContaPort atualizarSaldoContaPort;
 
+    @Mock
+    private SalvarResultadoProcessamentoPort salvarResultadoPort;
+
     private ValidacaoLancamentoService validacaoService;
     private ProcessarLancamentoService service;
 
     @BeforeEach
     void setUp() {
         validacaoService = new ValidacaoLancamentoService();
-        service = new ProcessarLancamentoService(consultarClienteContaPort, atualizarSaldoContaPort, validacaoService);
+        service = new ProcessarLancamentoService(consultarClienteContaPort, atualizarSaldoContaPort, salvarResultadoPort, validacaoService);
     }
 
     private Lancamento criarLancamento(TipoLancamento tipo) {
@@ -57,6 +61,9 @@ class ProcessarLancamentoServiceTest {
 
         assertEquals(StatusProcessamento.PROCESSADO, resultado.status());
         assertNull(resultado.motivoRejeicao());
+        assertEquals(new BigDecimal("10000.00"), resultado.saldoAnterior());
+        assertEquals(new BigDecimal("9849.25"), resultado.saldoPosterior());
+        verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("abc-123", "001234567-8", TipoLancamento.DEBITO, new BigDecimal("150.75"));
     }
 
@@ -70,6 +77,9 @@ class ProcessarLancamentoServiceTest {
         ResultadoProcessamento resultado = service.processar(lancamento);
 
         assertEquals(StatusProcessamento.PROCESSADO, resultado.status());
+        assertEquals(new BigDecimal("10000.00"), resultado.saldoAnterior());
+        assertEquals(new BigDecimal("10150.75"), resultado.saldoPosterior());
+        verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("abc-123", "001234567-8", TipoLancamento.CREDITO, new BigDecimal("150.75"));
     }
 
@@ -84,6 +94,7 @@ class ProcessarLancamentoServiceTest {
 
         assertEquals(StatusProcessamento.REJEITADO, resultado.status());
         assertEquals("CONTA_CANCELADA", resultado.motivoRejeicao());
+        verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any(), any());
     }
 
@@ -98,6 +109,7 @@ class ProcessarLancamentoServiceTest {
 
         assertEquals(StatusProcessamento.REJEITADO, resultado.status());
         assertEquals("CONTA_COM_BLOQUEIO_JUDICIAL", resultado.motivoRejeicao());
+        verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any(), any());
     }
 
@@ -111,6 +123,7 @@ class ProcessarLancamentoServiceTest {
         ResultadoProcessamento resultado = service.processar(lancamento);
 
         assertEquals(StatusProcessamento.PROCESSADO, resultado.status());
+        verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("abc-123", "001234567-8", TipoLancamento.CREDITO, new BigDecimal("150.75"));
     }
 
@@ -125,6 +138,7 @@ class ProcessarLancamentoServiceTest {
 
         assertEquals(StatusProcessamento.REJEITADO, resultado.status());
         assertEquals("SISTEMA_CONTAS_INDISPONIVEL", resultado.motivoRejeicao());
+        verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any(), any());
     }
 

@@ -21,7 +21,8 @@ class ResultadoProcessamentoTest {
     void factoryProcessadoDeveCriarResultadoCorreto() {
         Lancamento lancamento = criarLancamento();
 
-        ResultadoProcessamento resultado = ResultadoProcessamento.processado(lancamento);
+        ResultadoProcessamento resultado = ResultadoProcessamento.processado(
+                lancamento, new BigDecimal("5000.00"), new BigDecimal("4750.00"));
 
         assertEquals(StatusProcessamento.PROCESSADO, resultado.status());
         assertNull(resultado.motivoRejeicao());
@@ -31,6 +32,8 @@ class ResultadoProcessamentoTest {
         assertEquals(new BigDecimal("250.00"), resultado.valor());
         assertEquals(LocalDate.of(2026, 3, 10), resultado.dataLancamento());
         assertEquals("Taxa mensal", resultado.descricao());
+        assertEquals(new BigDecimal("5000.00"), resultado.saldoAnterior());
+        assertEquals(new BigDecimal("4750.00"), resultado.saldoPosterior());
         assertNotNull(resultado.dataProcessamento());
     }
 
