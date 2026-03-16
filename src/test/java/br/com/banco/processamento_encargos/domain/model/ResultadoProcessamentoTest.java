@@ -17,14 +17,18 @@ class ResultadoProcessamentoTest {
     }
 
     @Test
-    @DisplayName("Factory processado deve criar resultado com status PROCESSADO e sem motivo de rejeição")
+    @DisplayName("Factory processado deve criar resultado com status PROCESSADO, saldos e sem motivo de recusa")
     void factoryProcessadoDeveCriarResultadoCorreto() {
         Lancamento lancamento = criarLancamento();
+        BigDecimal saldoAnterior = new BigDecimal("5000.00");
+        BigDecimal saldoPosterior = new BigDecimal("4750.00");
 
-        ResultadoProcessamento resultado = ResultadoProcessamento.processado(lancamento);
+        ResultadoProcessamento resultado = ResultadoProcessamento.processado(lancamento, saldoAnterior, saldoPosterior);
 
         assertEquals(StatusProcessamento.PROCESSADO, resultado.status());
-        assertNull(resultado.motivoRejeicao());
+        assertNull(resultado.motivoRecusa());
+        assertEquals(saldoAnterior, resultado.saldoAnterior());
+        assertEquals(saldoPosterior, resultado.saldoPosterior());
         assertEquals("abc-123", resultado.idLancamento());
         assertEquals("001234567-8", resultado.numeroConta());
         assertEquals(TipoLancamento.DEBITO, resultado.tipoLancamento());
@@ -35,28 +39,29 @@ class ResultadoProcessamentoTest {
     }
 
     @Test
-    @DisplayName("Factory rejeitado deve criar resultado com status REJEITADO e motivo informado")
-    void factoryRejeitadoDeveCriarResultadoCorreto() {
+    @DisplayName("Factory recusado deve criar resultado com status RECUSADO, saldos nulos e motivo informado")
+    void factoryRecusadoDeveCriarResultadoCorreto() {
         Lancamento lancamento = criarLancamento();
 
-        ResultadoProcessamento resultado = ResultadoProcessamento.rejeitado(lancamento, "CONTA_CANCELADA");
+        ResultadoProcessamento resultado = ResultadoProcessamento.recusado(lancamento, "CONTA_CANCELADA");
 
-        assertEquals(StatusProcessamento.REJEITADO, resultado.status());
-        assertEquals("CONTA_CANCELADA", resultado.motivoRejeicao());
+        assertEquals(StatusProcessamento.RECUSADO, resultado.status());
+        assertEquals("CONTA_CANCELADA", resultado.motivoRecusa());
+        assertNull(resultado.saldoAnterior());
+        assertNull(resultado.saldoPosterior());
         assertEquals("abc-123", resultado.idLancamento());
         assertEquals("001234567-8", resultado.numeroConta());
         assertNotNull(resultado.dataProcessamento());
     }
 
     @Test
-    @DisplayName("Factory rejeitado deve aceitar motivo nulo")
-    void factoryRejeitadoDeveAceitarMotivoNulo() {
+    @DisplayName("Factory recusado deve aceitar motivo nulo")
+    void factoryRecusadoDeveAceitarMotivoNulo() {
         Lancamento lancamento = criarLancamento();
 
-        ResultadoProcessamento resultado = ResultadoProcessamento.rejeitado(lancamento, null);
+        ResultadoProcessamento resultado = ResultadoProcessamento.recusado(lancamento, null);
 
-        assertEquals(StatusProcessamento.REJEITADO, resultado.status());
-        assertNull(resultado.motivoRejeicao());
+        assertEquals(StatusProcessamento.RECUSADO, resultado.status());
+        assertNull(resultado.motivoRecusa());
     }
 }
-
