@@ -16,6 +16,12 @@ public class KafkaTopicsConfig {
     @Value("${encargos.kafka.topics.consulta-response}")
     private String topicoResponse;
 
+    @Value("${encargos.kafka.topics.confirmacao-contabil}")
+    private String topicoConfirmacaoContabil;
+
+    @Value("${encargos.kafka.topics.atualizar-saldo}")
+    private String topicoAtualizarSaldo;
+
     @Bean
     public NewTopic topicConsultaRequest() {
         return TopicBuilder.name(topicoRequest)
@@ -27,6 +33,22 @@ public class KafkaTopicsConfig {
     @Bean
     public NewTopic topicConsultaResponse() {
         return TopicBuilder.name(topicoResponse)
+                .partitions(10)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic topicConfirmacaoContabil() {
+        return TopicBuilder.name(topicoConfirmacaoContabil)
+                .partitions(10)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic topicAtualizarSaldo() {
+        return TopicBuilder.name(topicoAtualizarSaldo)
                 .partitions(10)
                 .replicas(1)
                 .build();

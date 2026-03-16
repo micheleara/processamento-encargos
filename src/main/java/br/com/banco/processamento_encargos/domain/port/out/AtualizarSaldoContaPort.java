@@ -6,6 +6,6 @@ import java.math.BigDecimal;
 
 public interface AtualizarSaldoContaPort {
 
-    void publicarAtualizacaoSaldo(String numeroConta, TipoLancamento tipo, BigDecimal valor);
+    void publicarAtualizacaoSaldo(String idLancamento, String numeroConta, TipoLancamento tipo, BigDecimal valor);
 }
 

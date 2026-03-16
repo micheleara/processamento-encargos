@@ -57,7 +57,7 @@ class ProcessarLancamentoServiceTest {
 
         assertEquals(StatusProcessamento.PROCESSADO, resultado.status());
         assertNull(resultado.motivoRejeicao());
-        verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("001234567-8", TipoLancamento.DEBITO, new BigDecimal("150.75"));
+        verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("abc-123", "001234567-8", TipoLancamento.DEBITO, new BigDecimal("150.75"));
     }
 
     @Test
@@ -70,7 +70,7 @@ class ProcessarLancamentoServiceTest {
         ResultadoProcessamento resultado = service.processar(lancamento);
 
         assertEquals(StatusProcessamento.PROCESSADO, resultado.status());
-        verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("001234567-8", TipoLancamento.CREDITO, new BigDecimal("150.75"));
+        verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("abc-123", "001234567-8", TipoLancamento.CREDITO, new BigDecimal("150.75"));
     }
 
     @Test
@@ -84,7 +84,7 @@ class ProcessarLancamentoServiceTest {
 
         assertEquals(StatusProcessamento.REJEITADO, resultado.status());
         assertEquals("CONTA_CANCELADA", resultado.motivoRejeicao());
-        verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any());
+        verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any(), any());
     }
 
     @Test
@@ -98,7 +98,7 @@ class ProcessarLancamentoServiceTest {
 
         assertEquals(StatusProcessamento.REJEITADO, resultado.status());
         assertEquals("CONTA_COM_BLOQUEIO_JUDICIAL", resultado.motivoRejeicao());
-        verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any());
+        verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any(), any());
     }
 
     @Test
@@ -111,7 +111,7 @@ class ProcessarLancamentoServiceTest {
         ResultadoProcessamento resultado = service.processar(lancamento);
 
         assertEquals(StatusProcessamento.PROCESSADO, resultado.status());
-        verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("001234567-8", TipoLancamento.CREDITO, new BigDecimal("150.75"));
+        verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("abc-123", "001234567-8", TipoLancamento.CREDITO, new BigDecimal("150.75"));
     }
 
     @Test
@@ -125,7 +125,7 @@ class ProcessarLancamentoServiceTest {
 
         assertEquals(StatusProcessamento.REJEITADO, resultado.status());
         assertEquals("SISTEMA_CONTAS_INDISPONIVEL", resultado.motivoRejeicao());
-        verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any());
+        verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any(), any());
     }
 
     @Test

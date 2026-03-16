@@ -30,6 +30,6 @@ class StubAdaptersTest {
         StubAtualizarSaldoContaAdapter stub = new StubAtualizarSaldoContaAdapter();
 
         assertDoesNotThrow(() ->
-                stub.publicarAtualizacaoSaldo("001234567-8", TipoLancamento.DEBITO, new BigDecimal("100.00")));
+                stub.publicarAtualizacaoSaldo("id-001", "001234567-8", TipoLancamento.DEBITO, new BigDecimal("100.00")));
     }
 }

@@ -61,6 +61,8 @@ encargos:
     topics:
       consulta-request: ${KAFKA_TOPIC_CONSULTA_REQUEST:encargos.conta.consulta.request}
       consulta-response: ${KAFKA_TOPIC_CONSULTA_RESPONSE:encargos.conta.consulta.response}
+      confirmacao-contabil: ${KAFKA_TOPIC_CONFIRMACAO_CONTABIL:encargos.contabil-confirmacao}
+      atualizar-saldo: ${KAFKA_TOPIC_ATUALIZAR_SALDO:encargos.conta.atualizar-saldo}
     consulta-timeout-seconds: ${KAFKA_CONSULTA_TIMEOUT_SECONDS:5}
     # local-temp-dir removido: leitura agora é feita por stream direto do S3
 

@@ -12,8 +12,8 @@ import java.math.BigDecimal;
 public class StubAtualizarSaldoContaAdapter implements AtualizarSaldoContaPort {
 
     @Override
-    public void publicarAtualizacaoSaldo(String numeroConta, TipoLancamento tipo, BigDecimal valor) {
-        log.debug("[STUB] Publicando atualização de saldo: conta={} tipo={} valor={}", numeroConta, tipo, valor);
+    public void publicarAtualizacaoSaldo(String idLancamento, String numeroConta, TipoLancamento tipo, BigDecimal valor) {
+        log.debug("[STUB] Publicando atualização de saldo: id={} conta={} tipo={} valor={}", idLancamento, numeroConta, tipo, valor);
     }
 }
 
