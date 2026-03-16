@@ -45,7 +45,7 @@ public record ResultadoProcessamento(
                 lancamento.dataLancamento(),
                 lancamento.descricao(),
                 lancamento.evento(),
-                StatusProcessamento.REJEITADO,
+                StatusProcessamento.RECUSADO,
                 motivoRejeicao,
                 null,
                 null,

@@ -3,6 +3,7 @@ package br.com.banco.processamento_encargos.application;
 import br.com.banco.processamento_encargos.domain.model.*;
 import br.com.banco.processamento_encargos.domain.port.out.AtualizarSaldoContaPort;
 import br.com.banco.processamento_encargos.domain.port.out.ConsultarClienteContaPort;
+import br.com.banco.processamento_encargos.domain.port.out.PublicarLancamentoContabilPort;
 import br.com.banco.processamento_encargos.domain.port.out.SalvarResultadoProcessamentoPort;
 import br.com.banco.processamento_encargos.domain.service.ValidacaoLancamentoService;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,13 +32,16 @@ class ProcessarLancamentoServiceTest {
     @Mock
     private SalvarResultadoProcessamentoPort salvarResultadoPort;
 
+    @Mock
+    private PublicarLancamentoContabilPort publicarLancamentoContabilPort;
+
     private ValidacaoLancamentoService validacaoService;
     private ProcessarLancamentoService service;
 
     @BeforeEach
     void setUp() {
         validacaoService = new ValidacaoLancamentoService();
-        service = new ProcessarLancamentoService(consultarClienteContaPort, atualizarSaldoContaPort, salvarResultadoPort, validacaoService);
+        service = new ProcessarLancamentoService(consultarClienteContaPort, atualizarSaldoContaPort, salvarResultadoPort, publicarLancamentoContabilPort, validacaoService);
     }
 
     private Lancamento criarLancamento(TipoLancamento tipo) {
@@ -65,6 +69,7 @@ class ProcessarLancamentoServiceTest {
         assertEquals(new BigDecimal("9849.25"), resultado.saldoPosterior());
         verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("abc-123", "001234567-8", TipoLancamento.DEBITO, new BigDecimal("150.75"));
+        verify(publicarLancamentoContabilPort).publicar(resultado);
     }
 
     @Test
@@ -81,10 +86,11 @@ class ProcessarLancamentoServiceTest {
         assertEquals(new BigDecimal("10150.75"), resultado.saldoPosterior());
         verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("abc-123", "001234567-8", TipoLancamento.CREDITO, new BigDecimal("150.75"));
+        verify(publicarLancamentoContabilPort).publicar(resultado);
     }
 
     @Test
-    @DisplayName("Deve retornar REJEITADO quando conta CANCELADA")
+    @DisplayName("Deve retornar RECUSADO quando conta CANCELADA")
     void deveRejeitarQuandoContaCancelada() {
         Lancamento lancamento = criarLancamento(TipoLancamento.DEBITO);
         ContaInfo conta = criarConta(StatusConta.CANCELADA);
@@ -92,14 +98,15 @@ class ProcessarLancamentoServiceTest {
 
         ResultadoProcessamento resultado = service.processar(lancamento);
 
-        assertEquals(StatusProcessamento.REJEITADO, resultado.status());
+        assertEquals(StatusProcessamento.RECUSADO, resultado.status());
         assertEquals("CONTA_CANCELADA", resultado.motivoRejeicao());
         verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any(), any());
+        verify(publicarLancamentoContabilPort, never()).publicar(any());
     }
 
     @Test
-    @DisplayName("Deve retornar REJEITADO para DEBITO em conta com BLOQUEIO_JUDICIAL")
+    @DisplayName("Deve retornar RECUSADO para DEBITO em conta com BLOQUEIO_JUDICIAL")
     void deveRejeitarDebitoComBloqueioJudicial() {
         Lancamento lancamento = criarLancamento(TipoLancamento.DEBITO);
         ContaInfo conta = criarConta(StatusConta.BLOQUEIO_JUDICIAL);
@@ -107,10 +114,11 @@ class ProcessarLancamentoServiceTest {
 
         ResultadoProcessamento resultado = service.processar(lancamento);
 
-        assertEquals(StatusProcessamento.REJEITADO, resultado.status());
+        assertEquals(StatusProcessamento.RECUSADO, resultado.status());
         assertEquals("CONTA_COM_BLOQUEIO_JUDICIAL", resultado.motivoRejeicao());
         verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any(), any());
+        verify(publicarLancamentoContabilPort, never()).publicar(any());
     }
 
     @Test
@@ -125,10 +133,11 @@ class ProcessarLancamentoServiceTest {
         assertEquals(StatusProcessamento.PROCESSADO, resultado.status());
         verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort).publicarAtualizacaoSaldo("abc-123", "001234567-8", TipoLancamento.CREDITO, new BigDecimal("150.75"));
+        verify(publicarLancamentoContabilPort).publicar(resultado);
     }
 
     @Test
-    @DisplayName("Deve retornar REJEITADO quando conta INDISPONIVEL")
+    @DisplayName("Deve retornar RECUSADO quando conta INDISPONIVEL")
     void deveRejeitarQuandoContaIndisponivel() {
         Lancamento lancamento = criarLancamento(TipoLancamento.DEBITO);
         ContaInfo conta = ContaInfo.indisponivel("001234567-8");
@@ -136,10 +145,11 @@ class ProcessarLancamentoServiceTest {
 
         ResultadoProcessamento resultado = service.processar(lancamento);
 
-        assertEquals(StatusProcessamento.REJEITADO, resultado.status());
+        assertEquals(StatusProcessamento.RECUSADO, resultado.status());
         assertEquals("SISTEMA_CONTAS_INDISPONIVEL", resultado.motivoRejeicao());
         verify(salvarResultadoPort).salvar(resultado);
         verify(atualizarSaldoContaPort, never()).publicarAtualizacaoSaldo(any(), any(), any(), any());
+        verify(publicarLancamentoContabilPort, never()).publicar(any());
     }
 
     @Test
@@ -161,7 +171,7 @@ class ProcessarLancamentoServiceTest {
     }
 
     @Test
-    @DisplayName("Deve preencher dados do lançamento no resultado REJEITADO")
+    @DisplayName("Deve preencher dados do lançamento no resultado RECUSADO")
     void devePreencherDadosNoResultadoRejeitado() {
         Lancamento lancamento = criarLancamento(TipoLancamento.DEBITO);
         ContaInfo conta = criarConta(StatusConta.CANCELADA);

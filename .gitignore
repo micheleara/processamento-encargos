@@ -34,3 +34,4 @@ build/
 /src/main/resources/application-default.yaml
 
 /.doc_processo/
+/.env

@@ -54,7 +54,7 @@ class LancamentoProcessorTest {
     }
 
     @Test
-    @DisplayName("Deve delegar processamento para o port e retornar resultado REJEITADO")
+    @DisplayName("Deve delegar processamento para o port e retornar resultado RECUSADO")
     void deveDelegarProcessamentoERetornarRejeitado() {
         Lancamento lancamento = criarLancamento();
         ResultadoProcessamento esperado = ResultadoProcessamento.rejeitado(lancamento, "CONTA_CANCELADA");
@@ -63,7 +63,7 @@ class LancamentoProcessorTest {
         ResultadoProcessamento resultado = processor.process(lancamento);
 
         assertNotNull(resultado);
-        assertEquals(StatusProcessamento.REJEITADO, resultado.status());
+        assertEquals(StatusProcessamento.RECUSADO, resultado.status());
         assertEquals("CONTA_CANCELADA", resultado.motivoRejeicao());
         verify(processarLancamentoPort, times(1)).processar(lancamento);
     }
