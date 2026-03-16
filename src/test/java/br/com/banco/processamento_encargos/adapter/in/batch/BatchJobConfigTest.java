@@ -14,14 +14,13 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.support.SynchronizedItemStreamReader;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import javax.sql.DataSource;
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.Field;
 
@@ -36,8 +35,6 @@ class BatchJobConfigTest {
     @Mock
     private PlatformTransactionManager transactionManager;
     @Mock
-    private DataSource dataSource;
-    @Mock
     private ProcessarLancamentoPort processarLancamentoPort;
     @Mock
     private S3FileDownloadAdapter s3FileDownloadAdapter;
@@ -46,7 +43,7 @@ class BatchJobConfigTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        config = new BatchJobConfig(jobRepository, transactionManager, dataSource, processarLancamentoPort, s3FileDownloadAdapter);
+        config = new BatchJobConfig(jobRepository, transactionManager, processarLancamentoPort, s3FileDownloadAdapter);
         setField(config, "chunkSize", 100);
         setField(config, "partitions", 2);
     }
@@ -98,9 +95,9 @@ class BatchJobConfigTest {
     }
 
     @Test
-    @DisplayName("resultadoWriter deve criar JdbcBatchItemWriter configurado com DataSource")
-    void deveCriarResultadoWriter() {
-        JdbcBatchItemWriter<ResultadoProcessamento> writer = config.resultadoWriter();
+    @DisplayName("resultadoWriter deve criar ItemWriter no-op pois persistência ocorre no service")
+    void deveCriarNoOpWriter() {
+        ItemWriter<ResultadoProcessamento> writer = config.resultadoWriter();
 
         assertNotNull(writer);
     }

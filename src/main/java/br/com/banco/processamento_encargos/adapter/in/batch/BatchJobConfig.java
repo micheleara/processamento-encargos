@@ -8,16 +8,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.database.JdbcBatchItemWriter;
-import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.support.SynchronizedItemStreamReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -27,7 +25,6 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import javax.sql.DataSource;
 import java.io.InputStream;
 
 @Slf4j
@@ -37,7 +34,6 @@ public class BatchJobConfig {
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
-    private final DataSource dataSource;
     private final ProcessarLancamentoPort processarLancamentoPort;
     private final S3FileDownloadAdapter s3FileDownloadAdapter;
 
@@ -99,11 +95,11 @@ public class BatchJobConfig {
         return new FlatFileItemReaderBuilder<Lancamento>()
                 .name("lancamentoCsvReader")
                 .resource(new InputStreamResource(s3Stream, "S3 CSV Stream - lancamentos.csv"))
-                .linesToSkip(1) // pular cabeçalho
+                .linesToSkip(1)
                 .delimited()
                 .names("idLancamento", "numeroConta", "tipoLancamento", "valor", "dataLancamento", "descricao", "evento")
                 .fieldSetMapper(new LancamentoCsvFieldSetMapper())
-                .saveState(false) // InputStreamResource não suporta restart — desabilitar save state
+                .saveState(false)
                 .build();
     }
 
@@ -113,36 +109,16 @@ public class BatchJobConfig {
     }
 
     @Bean
-    public JdbcBatchItemWriter<ResultadoProcessamento> resultadoWriter() {
-        return new JdbcBatchItemWriterBuilder<ResultadoProcessamento>()
-                .dataSource(dataSource)
-                .sql("""
-                    INSERT INTO resultado_processamento
-                        (id_lancamento, numero_conta, tipo_lancamento, valor, data_lancamento, descricao, evento, status, motivo_rejeicao, data_processamento)
-                    VALUES
-                        (:idLancamento, :numeroConta, :tipoLancamento, :valor, :dataLancamento, :descricao, :evento, :status, :motivoRejeicao, :dataProcessamento)
-                    ON CONFLICT (id_lancamento) DO NOTHING
-                    """)
-                .assertUpdates(false) // ON CONFLICT DO NOTHING retorna 0 linhas em duplicatas — comportamento esperado
-                .itemSqlParameterSourceProvider(item -> new MapSqlParameterSource()
-                        .addValue("idLancamento",      item.idLancamento())
-                        .addValue("numeroConta",       item.numeroConta())
-                        .addValue("tipoLancamento",    item.tipoLancamento().name())
-                        .addValue("valor",             item.valor())
-                        .addValue("dataLancamento",    item.dataLancamento())
-                        .addValue("descricao",         item.descricao())
-                        .addValue("evento",            item.evento())
-                        .addValue("status",            item.status().name())
-                        .addValue("motivoRejeicao",    item.motivoRejeicao())
-                        .addValue("dataProcessamento", item.dataProcessamento()))
-                .build();
+    public ItemWriter<ResultadoProcessamento> resultadoWriter() {
+        // A persistência é feita pelo ProcessarLancamentoService via SalvarResultadoProcessamentoPort
+        return items -> {};
     }
 
     @Bean
     public TaskExecutor batchTaskExecutor() {
         SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor("batch-encargos-");
         executor.setConcurrencyLimit(partitions);
-        executor.setVirtualThreads(true); // Java 21 Virtual Threads
+        executor.setVirtualThreads(true);
         return executor;
     }
 }
