@@ -38,13 +38,13 @@ class ResultadoProcessamentoTest {
     }
 
     @Test
-    @DisplayName("Factory rejeitado deve criar resultado com status RECUSADO e motivo informado")
+    @DisplayName("Factory rejeitado deve criar resultado com status REJEITADO e motivo informado")
     void factoryRejeitadoDeveCriarResultadoCorreto() {
         Lancamento lancamento = criarLancamento();
 
         ResultadoProcessamento resultado = ResultadoProcessamento.rejeitado(lancamento, "CONTA_CANCELADA");
 
-        assertEquals(StatusProcessamento.RECUSADO, resultado.status());
+        assertEquals(StatusProcessamento.REJEITADO, resultado.status());
         assertEquals("CONTA_CANCELADA", resultado.motivoRejeicao());
         assertEquals("abc-123", resultado.idLancamento());
         assertEquals("001234567-8", resultado.numeroConta());
@@ -52,13 +52,13 @@ class ResultadoProcessamentoTest {
     }
 
     @Test
-    @DisplayName("Factory rejeitado deve aceitar motivo nulo")
+    @DisplayName("Factory rejeitado deve aceitar motivo nulo (sem persistência)")
     void factoryRejeitadoDeveAceitarMotivoNulo() {
         Lancamento lancamento = criarLancamento();
 
         ResultadoProcessamento resultado = ResultadoProcessamento.rejeitado(lancamento, null);
 
-        assertEquals(StatusProcessamento.RECUSADO, resultado.status());
+        assertEquals(StatusProcessamento.REJEITADO, resultado.status());
         assertNull(resultado.motivoRejeicao());
     }
 }

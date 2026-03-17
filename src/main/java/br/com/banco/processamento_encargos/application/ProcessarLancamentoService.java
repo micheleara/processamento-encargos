@@ -8,7 +8,6 @@ import br.com.banco.processamento_encargos.domain.port.in.ProcessarLancamentoPor
 import br.com.banco.processamento_encargos.domain.port.out.AtualizarSaldoContaPort;
 import br.com.banco.processamento_encargos.domain.port.out.ConsultarClienteContaPort;
 import br.com.banco.processamento_encargos.domain.port.out.PublicarLancamentoContabilPort;
-import br.com.banco.processamento_encargos.domain.port.out.SalvarResultadoProcessamentoPort;
 import br.com.banco.processamento_encargos.domain.service.ValidacaoLancamentoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +23,6 @@ public class ProcessarLancamentoService implements ProcessarLancamentoPort {
 
     private final ConsultarClienteContaPort consultarClienteContaPort;
     private final AtualizarSaldoContaPort atualizarSaldoContaPort;
-    private final SalvarResultadoProcessamentoPort salvarResultadoPort;
     private final PublicarLancamentoContabilPort publicarLancamentoContabilPort;
     private final ValidacaoLancamentoService validacaoService;
 
@@ -39,12 +37,10 @@ public class ProcessarLancamentoService implements ProcessarLancamentoPort {
         // 2. Validar regras de negócio
         Optional<String> motivoRejeicao = validacaoService.validar(lancamento, contaInfo);
 
-        // 3. Se inválido → RECUSADO — persiste e retorna
+        // 3. Se inválido → RECUSADO — retorna sem persistir (persistência delegada ao writer do batch)
         if (motivoRejeicao.isPresent()) {
             log.info("Lançamento RECUSADO id={} motivo={}", lancamento.idLancamento(), motivoRejeicao.get());
-            ResultadoProcessamento resultado = ResultadoProcessamento.rejeitado(lancamento, motivoRejeicao.get());
-            salvarResultadoPort.salvar(resultado);
-            return resultado;
+            return ResultadoProcessamento.rejeitado(lancamento, motivoRejeicao.get());
         }
 
         // 4. Calcular saldos
@@ -53,9 +49,8 @@ public class ProcessarLancamentoService implements ProcessarLancamentoPort {
                 ? saldoAnterior.subtract(lancamento.valor())
                 : saldoAnterior.add(lancamento.valor());
 
-        // 5. Persistir resultado PROCESSADO com saldos
+        // 5. Montar resultado PROCESSADO com saldos (persistência delegada ao writer do batch)
         ResultadoProcessamento resultado = ResultadoProcessamento.processado(lancamento, saldoAnterior, saldoPosterior);
-        salvarResultadoPort.salvar(resultado);
 
         // 6. Registrar atualização de saldo pendente no mapa (será publicada após confirmação contábil — evento ⑦)
         // DEVE ocorrer antes do evento ④ para evitar race condition caso a confirmação ⑥ chegue muito rápido

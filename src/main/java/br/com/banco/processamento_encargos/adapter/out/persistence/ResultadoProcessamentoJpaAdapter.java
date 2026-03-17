@@ -5,6 +5,8 @@ import br.com.banco.processamento_encargos.domain.port.out.SalvarResultadoProces
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
@@ -14,7 +16,13 @@ public class ResultadoProcessamentoJpaAdapter implements SalvarResultadoProcessa
     private final ResultadoProcessamentoRepository repository;
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void salvar(ResultadoProcessamento resultado) {
+        if (repository.existsByIdLancamento(resultado.idLancamento())) {
+            log.warn("idLancamento já existe na base, ignorando: id={}", resultado.idLancamento());
+            return;
+        }
+
         ResultadoProcessamentoEntity entity = ResultadoProcessamentoEntity.builder()
                 .idLancamento(resultado.idLancamento())
                 .numConta(resultado.numeroConta())

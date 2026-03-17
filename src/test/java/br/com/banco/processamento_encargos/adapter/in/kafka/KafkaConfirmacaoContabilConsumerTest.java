@@ -48,10 +48,10 @@ class KafkaConfirmacaoContabilConsumerTest {
     }
 
     @Test
-    @DisplayName("Não deve chamar publicarSaldo quando status é RECUSADO")
-    void naoDeveChamarPublicarSaldoQuandoStatusRecusado() throws Exception {
+    @DisplayName("Não deve chamar publicarSaldo quando status é REJEITADO")
+    void naoDeveChamarPublicarSaldoQuandoStatusRejeitado() throws Exception {
         ConfirmacaoContabilEvent evento = new ConfirmacaoContabilEvent(
-                "EVT-002", "LC-1710000000000-b2c3d4e5", "RECUSADO", LocalDateTime.now());
+                "EVT-002", "LC-1710000000000-b2c3d4e5", "REJEITADO", LocalDateTime.now());
         String payload = objectMapper.writeValueAsString(evento);
 
         consumer.consumirConfirmacao(payload, "encargos.contabil-confirmacao", ack);

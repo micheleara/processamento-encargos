@@ -4,6 +4,7 @@ import br.com.banco.processamento_encargos.adapter.out.s3.S3FileDownloadAdapter;
 import br.com.banco.processamento_encargos.domain.model.Lancamento;
 import br.com.banco.processamento_encargos.domain.model.ResultadoProcessamento;
 import br.com.banco.processamento_encargos.domain.port.in.ProcessarLancamentoPort;
+import br.com.banco.processamento_encargos.domain.port.out.SalvarResultadoProcessamentoPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -11,13 +12,17 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.skip.SkipLimitExceededException;
+import org.springframework.batch.core.step.skip.SkipPolicy;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.file.FlatFileParseException;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.support.SynchronizedItemStreamReader;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.InputStreamResource;
@@ -36,6 +41,7 @@ public class BatchJobConfig {
     private final PlatformTransactionManager transactionManager;
     private final ProcessarLancamentoPort processarLancamentoPort;
     private final S3FileDownloadAdapter s3FileDownloadAdapter;
+    private final SalvarResultadoProcessamentoPort salvarResultadoPort;
 
     @Value("${encargos.batch.chunk-size:1000}")
     private int chunkSize;
@@ -65,8 +71,46 @@ public class BatchJobConfig {
                 .taskExecutor(batchTaskExecutor())
                 .faultTolerant()
                 .skipLimit(10_000)
-                .skip(Exception.class)
+                .skipPolicy(encargosSkipPolicy())
+                .listener(encargosSkipListener())
                 .build();
+    }
+
+    @Bean
+    public SkipPolicy encargosSkipPolicy() {
+        return (t, skipCount) -> {
+            if (t instanceof DataIntegrityViolationException) {
+                log.warn("Skip por duplicidade de idLancamento (já processado): {}", t.getMessage());
+                return true;
+            }
+            if (t instanceof FlatFileParseException) {
+                log.warn("Skip por erro de parse no CSV: {}", t.getMessage());
+                return true;
+            }
+            if (skipCount >= 10_000) throw new SkipLimitExceededException(10_000, t);
+            log.error("Exceção inesperada durante processamento — item será ignorado: {}", t.getMessage(), t);
+            return true;
+        };
+    }
+
+    @Bean
+    public org.springframework.batch.core.SkipListener<Lancamento, ResultadoProcessamento> encargosSkipListener() {
+        return new org.springframework.batch.core.SkipListener<>() {
+            @Override
+            public void onSkipInProcess(Lancamento item, Throwable t) {
+                log.warn("Item IGNORADO no processamento: idLancamento={} conta={} causa={}",
+                        item.idLancamento(), item.numeroConta(), t.getMessage());
+            }
+            @Override
+            public void onSkipInRead(Throwable t) {
+                log.warn("Linha IGNORADA na leitura do CSV: {}", t.getMessage());
+            }
+            @Override
+            public void onSkipInWrite(ResultadoProcessamento item, Throwable t) {
+                log.warn("Item IGNORADO na escrita: idLancamento={} causa={}",
+                        item.idLancamento(), t.getMessage());
+            }
+        };
     }
 
     /**
@@ -108,10 +152,13 @@ public class BatchJobConfig {
         return new LancamentoProcessor(processarLancamentoPort);
     }
 
-    // Persistência é realizada pelo ProcessarLancamentoService via JPA durante o processamento
     @Bean
     public ItemWriter<ResultadoProcessamento> resultadoWriter() {
-        return items -> {};
+        return items -> {
+            for (ResultadoProcessamento resultado : items) {
+                salvarResultadoPort.salvar(resultado);
+            }
+        };
     }
 
     @Bean

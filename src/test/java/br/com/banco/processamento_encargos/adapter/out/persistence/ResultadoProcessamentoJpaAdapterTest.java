@@ -64,7 +64,7 @@ class ResultadoProcessamentoJpaAdapterTest {
     }
 
     @Test
-    @DisplayName("Deve mapear campos corretamente para resultado RECUSADO com saldos nulos")
+    @DisplayName("Deve mapear campos corretamente para resultado REJEITADO com saldos nulos")
     void deveSalvarResultadoRecusadoComSaldosNulos() {
         ResultadoProcessamento resultado = ResultadoProcessamento.rejeitado(criarLancamento(), "CONTA_CANCELADA");
 
@@ -74,7 +74,7 @@ class ResultadoProcessamentoJpaAdapterTest {
         verify(repository).save(captor.capture());
 
         ResultadoProcessamentoEntity entity = captor.getValue();
-        assertEquals(StatusProcessamento.RECUSADO.name(), entity.getStatusProc());
+        assertEquals(StatusProcessamento.REJEITADO.name(), entity.getStatusProc());
         assertEquals("CONTA_CANCELADA", entity.getMotivoRecusa());
         assertNull(entity.getSaldoAnterior());
         assertNull(entity.getSaldoPosterior());

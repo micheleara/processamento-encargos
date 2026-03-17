@@ -38,8 +38,7 @@ public class KafkaLancamentoContabilAdapter implements PublicarLancamentoContabi
             log.debug("Lançamento contábil publicado: idLancamento={} conta={} valor={}",
                     resultado.idLancamento(), resultado.numeroConta(), resultado.valor());
         } catch (Exception e) {
-            log.error("Erro ao publicar lançamento contábil: idLancamento={}", resultado.idLancamento(), e);
-            throw new RuntimeException("Falha ao publicar lançamento contábil", e);
+            log.error("Falha ao publicar lançamento contábil — registro já persistido, evento Kafka perdido: idLancamento={}", resultado.idLancamento(), e);
         }
     }
 }
