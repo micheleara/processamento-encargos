@@ -1,17 +1,21 @@
-CREATE TABLE resultado_processamento (
-    id                  BIGSERIAL PRIMARY KEY,
-    id_lancamento       VARCHAR(36)    NOT NULL UNIQUE,
-    numero_conta        VARCHAR(20)    NOT NULL,
-    tipo_lancamento     VARCHAR(10)    NOT NULL,
-    valor               NUMERIC(15,2)  NOT NULL,
-    data_lancamento     DATE           NOT NULL,
-    descricao           VARCHAR(255),
-    status              VARCHAR(20)    NOT NULL,
-    motivo_rejeicao     VARCHAR(100),
-    data_processamento  TIMESTAMP      NOT NULL DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS resultadoprocessamentodb (
+    id               BIGSERIAL PRIMARY KEY,
+    id_lancamento    VARCHAR(50)     NOT NULL UNIQUE,
+    num_conta        VARCHAR(20)     NOT NULL,
+    tipo_lancamento  VARCHAR(10)     NOT NULL,
+    valor            DECIMAL(15, 2)  NOT NULL,
+    data_lancamento  DATE            NOT NULL,
+    descricao        VARCHAR(200),
+    evento           VARCHAR(20),
+    status_proc      VARCHAR(20)     NOT NULL,
+    motivo_recusa    VARCHAR(200),
+    saldo_anterior   DECIMAL(15, 2),
+    saldo_posterior  DECIMAL(15, 2),
+    processado_em    TIMESTAMP       NOT NULL,
+    CONSTRAINT resultadoprocessamentodb_check
+        CHECK (
+            (status_proc = 'PROCESSADO' AND motivo_recusa IS NULL)
+            OR
+            (status_proc = 'REJEITADO'  AND motivo_recusa IS NOT NULL)
+        )
 );
-
-CREATE INDEX idx_resultado_numero_conta ON resultado_processamento(numero_conta);
-CREATE INDEX idx_resultado_status       ON resultado_processamento(status);
-CREATE INDEX idx_resultado_data         ON resultado_processamento(data_lancamento);
-
