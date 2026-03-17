@@ -1,4 +1,4 @@
-package br.com.banco.processamento_encargos.domain.model;
+package br.com.banco.processamento_encargos.core.domain.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,7 +13,7 @@ public record ResultadoProcessamento(
         String descricao,
         String evento,
         StatusProcessamento status,
-        String motivoRecusa,
+        String motivoRejeicao,
         BigDecimal saldoAnterior,
         BigDecimal saldoPosterior,
         LocalDateTime dataProcessamento
@@ -27,7 +27,7 @@ public record ResultadoProcessamento(
                 lancamento.valor(),
                 lancamento.dataLancamento(),
                 lancamento.descricao(),
-                lancamento.evento(),
+                lancamento.evento().toUpperCase(),
                 StatusProcessamento.PROCESSADO,
                 null,
                 saldoAnterior,
@@ -36,7 +36,7 @@ public record ResultadoProcessamento(
         );
     }
 
-    public static ResultadoProcessamento recusado(Lancamento lancamento, String motivoRecusa) {
+    public static ResultadoProcessamento rejeitado(Lancamento lancamento, String motivoRejeicao) {
         return new ResultadoProcessamento(
                 lancamento.idLancamento(),
                 lancamento.numeroConta(),
@@ -44,9 +44,9 @@ public record ResultadoProcessamento(
                 lancamento.valor(),
                 lancamento.dataLancamento(),
                 lancamento.descricao(),
-                lancamento.evento(),
-                StatusProcessamento.RECUSADO,
-                motivoRecusa,
+                lancamento.evento().toUpperCase(),
+                StatusProcessamento.REJEITADO,
+                motivoRejeicao,
                 null,
                 null,
                 LocalDateTime.now()

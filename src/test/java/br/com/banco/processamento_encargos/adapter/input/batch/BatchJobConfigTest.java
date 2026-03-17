@@ -1,9 +1,11 @@
-package br.com.banco.processamento_encargos.adapter.in.batch;
+package br.com.banco.processamento_encargos.adapter.input.batch;
 
-import br.com.banco.processamento_encargos.adapter.out.s3.S3FileDownloadAdapter;
-import br.com.banco.processamento_encargos.domain.model.Lancamento;
-import br.com.banco.processamento_encargos.domain.model.ResultadoProcessamento;
-import br.com.banco.processamento_encargos.domain.port.in.ProcessarLancamentoPort;
+import br.com.banco.processamento_encargos.port.output.CarregarArquivoLancamentosOutputPort;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import br.com.banco.processamento_encargos.core.domain.model.Lancamento;
+import br.com.banco.processamento_encargos.core.domain.model.ResultadoProcessamento;
+import br.com.banco.processamento_encargos.port.input.ProcessarLancamentoInputPort;
+import br.com.banco.processamento_encargos.port.output.SalvarResultadoProcessamentoOutputPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,8 +16,8 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.support.SynchronizedItemStreamReader;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
@@ -35,15 +37,17 @@ class BatchJobConfigTest {
     @Mock
     private PlatformTransactionManager transactionManager;
     @Mock
-    private ProcessarLancamentoPort processarLancamentoPort;
+    private ProcessarLancamentoInputPort processarLancamentoPort;
     @Mock
-    private S3FileDownloadAdapter s3FileDownloadAdapter;
+    private CarregarArquivoLancamentosOutputPort carregarArquivoPort;
+    @Mock
+    private SalvarResultadoProcessamentoOutputPort salvarResultadoPort;
 
     private BatchJobConfig config;
 
     @BeforeEach
     void setUp() throws Exception {
-        config = new BatchJobConfig(jobRepository, transactionManager, processarLancamentoPort, s3FileDownloadAdapter);
+        config = new BatchJobConfig(jobRepository, transactionManager, processarLancamentoPort, carregarArquivoPort, salvarResultadoPort, new SimpleMeterRegistry());
         setField(config, "chunkSize", 100);
         setField(config, "partitions", 2);
     }
@@ -75,7 +79,7 @@ class BatchJobConfigTest {
     @Test
     @DisplayName("s3StreamCsvReader deve criar FlatFileItemReader a partir do stream S3")
     void deveCriarS3StreamCsvReader() {
-        when(s3FileDownloadAdapter.abrirStreamArquivoDoDia())
+        when(carregarArquivoPort.abrirStreamArquivoDoDia())
                 .thenReturn(new ByteArrayInputStream("header\nrow1".getBytes()));
 
         FlatFileItemReader<Lancamento> reader = config.s3StreamCsvReader();
@@ -86,7 +90,7 @@ class BatchJobConfigTest {
     @Test
     @DisplayName("synchronizedCsvReader deve criar SynchronizedItemStreamReader envolvendo o reader S3")
     void deveCriarSynchronizedCsvReader() {
-        when(s3FileDownloadAdapter.abrirStreamArquivoDoDia())
+        when(carregarArquivoPort.abrirStreamArquivoDoDia())
                 .thenReturn(new ByteArrayInputStream("header\nrow1".getBytes()));
 
         SynchronizedItemStreamReader<Lancamento> reader = config.synchronizedCsvReader();
@@ -95,8 +99,8 @@ class BatchJobConfigTest {
     }
 
     @Test
-    @DisplayName("resultadoWriter deve criar ItemWriter no-op pois persistência ocorre no service")
-    void deveCriarNoOpWriter() {
+    @DisplayName("resultadoWriter deve criar ItemWriter no-op")
+    void deveCriarResultadoWriter() {
         ItemWriter<ResultadoProcessamento> writer = config.resultadoWriter();
 
         assertNotNull(writer);
@@ -105,7 +109,7 @@ class BatchJobConfigTest {
     @Test
     @DisplayName("processarLancamentosStep deve criar Step com nome correto")
     void deveCriarProcessarLancamentosStep() {
-        when(s3FileDownloadAdapter.abrirStreamArquivoDoDia())
+        when(carregarArquivoPort.abrirStreamArquivoDoDia())
                 .thenReturn(new ByteArrayInputStream("header\nrow1".getBytes()));
 
         Step step = config.processarLancamentosStep();
@@ -117,7 +121,7 @@ class BatchJobConfigTest {
     @Test
     @DisplayName("processarEncargosJob deve criar Job com nome correto")
     void deveCriarProcessarEncargosJob() {
-        when(s3FileDownloadAdapter.abrirStreamArquivoDoDia())
+        when(carregarArquivoPort.abrirStreamArquivoDoDia())
                 .thenReturn(new ByteArrayInputStream("header\nrow1".getBytes()));
 
         Job job = config.processarEncargosJob();

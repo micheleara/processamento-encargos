@@ -1,10 +1,10 @@
-package br.com.banco.processamento_encargos.adapter.in.batch;
+package br.com.banco.processamento_encargos.adapter.input.batch;
 
-import br.com.banco.processamento_encargos.domain.model.Lancamento;
-import br.com.banco.processamento_encargos.domain.model.ResultadoProcessamento;
-import br.com.banco.processamento_encargos.domain.model.StatusProcessamento;
-import br.com.banco.processamento_encargos.domain.model.TipoLancamento;
-import br.com.banco.processamento_encargos.domain.port.in.ProcessarLancamentoPort;
+import br.com.banco.processamento_encargos.core.domain.model.Lancamento;
+import br.com.banco.processamento_encargos.core.domain.model.ResultadoProcessamento;
+import br.com.banco.processamento_encargos.core.domain.model.StatusProcessamento;
+import br.com.banco.processamento_encargos.core.domain.model.TipoLancamento;
+import br.com.banco.processamento_encargos.port.input.ProcessarLancamentoInputPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,7 @@ import static org.mockito.Mockito.*;
 class LancamentoProcessorTest {
 
     @Mock
-    private ProcessarLancamentoPort processarLancamentoPort;
+    private ProcessarLancamentoInputPort processarLancamentoPort;
 
     private LancamentoProcessor processor;
 
@@ -41,8 +41,8 @@ class LancamentoProcessorTest {
     @DisplayName("Deve delegar processamento para o port e retornar resultado PROCESSADO")
     void deveDelegarProcessamentoERetornarProcessado() {
         Lancamento lancamento = criarLancamento();
-        ResultadoProcessamento esperado = ResultadoProcessamento.processado(lancamento,
-                new BigDecimal("5000.00"), new BigDecimal("4849.25"));
+        ResultadoProcessamento esperado = ResultadoProcessamento.processado(
+                lancamento, new BigDecimal("10000.00"), new BigDecimal("9849.25"));
         when(processarLancamentoPort.processar(lancamento)).thenReturn(esperado);
 
         ResultadoProcessamento resultado = processor.process(lancamento);
@@ -54,17 +54,17 @@ class LancamentoProcessorTest {
     }
 
     @Test
-    @DisplayName("Deve delegar processamento para o port e retornar resultado RECUSADO")
-    void deveDelegarProcessamentoERetornarRecusado() {
+    @DisplayName("Deve delegar processamento para o port e retornar resultado REJEITADO")
+    void deveDelegarProcessamentoERetornarRejeitado() {
         Lancamento lancamento = criarLancamento();
-        ResultadoProcessamento esperado = ResultadoProcessamento.recusado(lancamento, "CONTA_CANCELADA");
+        ResultadoProcessamento esperado = ResultadoProcessamento.rejeitado(lancamento, "CONTA_CANCELADA");
         when(processarLancamentoPort.processar(lancamento)).thenReturn(esperado);
 
         ResultadoProcessamento resultado = processor.process(lancamento);
 
         assertNotNull(resultado);
-        assertEquals(StatusProcessamento.RECUSADO, resultado.status());
-        assertEquals("CONTA_CANCELADA", resultado.motivoRecusa());
+        assertEquals(StatusProcessamento.REJEITADO, resultado.status());
+        assertEquals("CONTA_CANCELADA", resultado.motivoRejeicao());
         verify(processarLancamentoPort, times(1)).processar(lancamento);
     }
 
@@ -79,4 +79,3 @@ class LancamentoProcessorTest {
         verify(processarLancamentoPort, times(1)).processar(lancamento);
     }
 }
-

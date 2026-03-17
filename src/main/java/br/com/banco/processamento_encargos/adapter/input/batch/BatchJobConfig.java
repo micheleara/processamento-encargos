@@ -1,23 +1,29 @@
-package br.com.banco.processamento_encargos.adapter.in.batch;
+package br.com.banco.processamento_encargos.adapter.input.batch;
 
-import br.com.banco.processamento_encargos.adapter.out.s3.S3FileDownloadAdapter;
-import br.com.banco.processamento_encargos.domain.model.Lancamento;
-import br.com.banco.processamento_encargos.domain.model.ResultadoProcessamento;
-import br.com.banco.processamento_encargos.domain.port.in.ProcessarLancamentoPort;
-import lombok.RequiredArgsConstructor;
+import br.com.banco.processamento_encargos.core.domain.model.Lancamento;
+import br.com.banco.processamento_encargos.core.domain.model.ResultadoProcessamento;
+import br.com.banco.processamento_encargos.port.input.ProcessarLancamentoInputPort;
+import br.com.banco.processamento_encargos.port.output.CarregarArquivoLancamentosOutputPort;
+import br.com.banco.processamento_encargos.port.output.SalvarResultadoProcessamentoOutputPort;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.skip.SkipLimitExceededException;
+import org.springframework.batch.core.step.skip.SkipPolicy;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.file.FlatFileParseException;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.support.SynchronizedItemStreamReader;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.InputStreamResource;
@@ -29,19 +35,36 @@ import java.io.InputStream;
 
 @Slf4j
 @Configuration
-@RequiredArgsConstructor
 public class BatchJobConfig {
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
-    private final ProcessarLancamentoPort processarLancamentoPort;
-    private final S3FileDownloadAdapter s3FileDownloadAdapter;
+    private final ProcessarLancamentoInputPort processarLancamentoPort;
+    private final CarregarArquivoLancamentosOutputPort carregarArquivoPort;
+    private final SalvarResultadoProcessamentoOutputPort salvarResultadoPort;
+    private final Counter contadorSkips;
 
     @Value("${encargos.batch.chunk-size:1000}")
     private int chunkSize;
 
     @Value("${encargos.batch.partitions:10}")
     private int partitions;
+
+    public BatchJobConfig(JobRepository jobRepository,
+                          PlatformTransactionManager transactionManager,
+                          ProcessarLancamentoInputPort processarLancamentoPort,
+                          CarregarArquivoLancamentosOutputPort carregarArquivoPort,
+                          SalvarResultadoProcessamentoOutputPort salvarResultadoPort,
+                          MeterRegistry meterRegistry) {
+        this.jobRepository = jobRepository;
+        this.transactionManager = transactionManager;
+        this.processarLancamentoPort = processarLancamentoPort;
+        this.carregarArquivoPort = carregarArquivoPort;
+        this.salvarResultadoPort = salvarResultadoPort;
+        this.contadorSkips = Counter.builder("encargos.batch.skips")
+                .description("Lançamentos ignorados (skip) durante o processamento do batch")
+                .register(meterRegistry);
+    }
 
     @Bean
     public Job processarEncargosJob() {
@@ -65,8 +88,49 @@ public class BatchJobConfig {
                 .taskExecutor(batchTaskExecutor())
                 .faultTolerant()
                 .skipLimit(10_000)
-                .skip(Exception.class)
+                .skipPolicy(encargosSkipPolicy())
+                .listener(encargosSkipListener())
                 .build();
+    }
+
+    @Bean
+    public SkipPolicy encargosSkipPolicy() {
+        return (t, skipCount) -> {
+            if (t instanceof DataIntegrityViolationException) {
+                log.warn("Skip por duplicidade de idLancamento (já processado): {}", t.getMessage());
+                return true;
+            }
+            if (t instanceof FlatFileParseException) {
+                log.warn("Skip por erro de parse no CSV: {}", t.getMessage());
+                return true;
+            }
+            if (skipCount >= 10_000) throw new SkipLimitExceededException(10_000, t);
+            log.error("Exceção inesperada durante processamento — item será ignorado: {}", t.getMessage(), t);
+            return true;
+        };
+    }
+
+    @Bean
+    public org.springframework.batch.core.SkipListener<Lancamento, ResultadoProcessamento> encargosSkipListener() {
+        return new org.springframework.batch.core.SkipListener<>() {
+            @Override
+            public void onSkipInProcess(Lancamento item, Throwable t) {
+                contadorSkips.increment();
+                log.warn("Item IGNORADO no processamento: idLancamento={} conta={} causa={}",
+                        item.idLancamento(), item.numeroConta(), t.getMessage());
+            }
+            @Override
+            public void onSkipInRead(Throwable t) {
+                contadorSkips.increment();
+                log.warn("Linha IGNORADA na leitura do CSV: {}", t.getMessage());
+            }
+            @Override
+            public void onSkipInWrite(ResultadoProcessamento item, Throwable t) {
+                contadorSkips.increment();
+                log.warn("Item IGNORADO na escrita: idLancamento={} causa={}",
+                        item.idLancamento(), t.getMessage());
+            }
+        };
     }
 
     /**
@@ -90,16 +154,16 @@ public class BatchJobConfig {
     @Bean
     @StepScope
     public FlatFileItemReader<Lancamento> s3StreamCsvReader() {
-        InputStream s3Stream = s3FileDownloadAdapter.abrirStreamArquivoDoDia();
+        InputStream s3Stream = carregarArquivoPort.abrirStreamArquivoDoDia();
 
         return new FlatFileItemReaderBuilder<Lancamento>()
                 .name("lancamentoCsvReader")
                 .resource(new InputStreamResource(s3Stream, "S3 CSV Stream - lancamentos.csv"))
-                .linesToSkip(1)
+                .linesToSkip(1) // pular cabeçalho
                 .delimited()
                 .names("idLancamento", "numeroConta", "tipoLancamento", "valor", "dataLancamento", "descricao", "evento")
                 .fieldSetMapper(new LancamentoCsvFieldSetMapper())
-                .saveState(false)
+                .saveState(false) // InputStreamResource não suporta restart — desabilitar save state
                 .build();
     }
 
@@ -110,15 +174,18 @@ public class BatchJobConfig {
 
     @Bean
     public ItemWriter<ResultadoProcessamento> resultadoWriter() {
-        // A persistência é feita pelo ProcessarLancamentoService via SalvarResultadoProcessamentoPort
-        return items -> {};
+        return items -> {
+            for (ResultadoProcessamento resultado : items) {
+                salvarResultadoPort.salvar(resultado);
+            }
+        };
     }
 
     @Bean
     public TaskExecutor batchTaskExecutor() {
         SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor("batch-encargos-");
         executor.setConcurrencyLimit(partitions);
-        executor.setVirtualThreads(true);
+        executor.setVirtualThreads(true); // Java 21 Virtual Threads
         return executor;
     }
 }
