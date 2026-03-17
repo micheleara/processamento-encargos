@@ -49,6 +49,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    out-of-order: true
 
 cloud:
   aws:
@@ -70,8 +71,27 @@ encargos:
       lancamento-contabil: ${KAFKA_TOPIC_LANCAMENTO_CONTABIL:encargos.contabil.lancamento.request}
       confirmacao-contabil: ${KAFKA_TOPIC_CONFIRMACAO_CONTABIL:encargos.contabil.lancamento.response}
       atualizar-saldo: ${KAFKA_TOPIC_ATUALIZAR_SALDO:encargos.conta.atualizar-saldo}
+      confirmacao-contabil-dlt: ${KAFKA_TOPIC_CONFIRMACAO_CONTABIL_DLT:encargos.contabil.lancamento.response.DLT}
+      consulta-response-dlt: ${KAFKA_TOPIC_CONSULTA_RESPONSE_DLT:encargos.conta.consulta.response.DLT}
     consulta-timeout-seconds: ${KAFKA_CONSULTA_TIMEOUT_SECONDS:5}
+  outbox:
+    retry-interval-ms: ${OUTBOX_RETRY_INTERVAL_MS:30000}
+    max-tentativas: ${OUTBOX_MAX_TENTATIVAS:5}
     # local-temp-dir removido: leitura agora é feita por stream direto do S3
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      consultarCliente:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 5s
+        slow-call-rate-threshold: 80
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
 
 management:
   endpoints:
